@@ -1,0 +1,9 @@
+{
+  "name": "opticore",
+  "version": "2.0.0",
+  "private": true,
+  "description": "OptiCore — web + agente local para analizar y optimizar tu dispositivo",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

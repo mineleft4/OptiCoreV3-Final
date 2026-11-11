@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <script>
+    /* Fija el esquema (claro/oscuro) antes de pintar para evitar parpadeos.
+       js/scheme.js mantiene el atributo actualizado a partir de aquí. */
+    (function () {
+      var pref = 'auto';
+      try { pref = localStorage.getItem('opticore-scheme') || 'auto'; } catch (e) {}
+      var dark = false;
+      try { dark = window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
+      document.documentElement.dataset.scheme = (pref === 'auto') ? (dark ? 'dark' : 'light') : pref;
+    })();
+  </script>
+  <title>OptiCore ⚡ — Optimiza tu dispositivo</title>
+  <meta name="description" content="OptiCore analiza tu dispositivo y te recomienda cómo optimizarlo según tu sistema operativo: Windows, Linux, macOS, Android o iOS." />
+  <!-- Agente local: direcciones donde la web publicada buscará los datos reales -->
+  <meta name="opticore-agent" content="http://127.0.0.1:8137" />
+  <!-- Opcional (modo antiguo): URL de un ZIP único del agente -->
+  <meta name="opticore-agent-download" content="" />
+  <!-- Carpeta donde están los ejecutables del agente (GitHub Releases), p. ej.
+       https://github.com/USUARIO/opticore/releases/latest/download
+       Archivos esperados: opticore-agent-windows-x64.exe, opticore-agent-linux-x64,
+       opticore-agent-macos-arm64, opticore-agent-macos-x64 -->
+  <meta name="opticore-agent-release" content="" />
+  <!-- API en la nube (backend/ + MySQL): cuentas, perfil e historial.
+       Ejemplo: https://opticore-api.onrender.com  — vacío = cuentas en el agente local -->
+  <meta name="opticore-cloud" content="" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="on-splash">
+
+  <!-- ═══════════════════ PANTALLA DE BIENVENIDA ═══════════════════ -->
+  <div id="splash" class="splash">
+    <div class="splash-bubbles" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <div class="splash-inner">
+      <h1 class="splash-logo"><span class="bolt">⚡</span> OptiCore</h1>
+      <p class="splash-tagline">Tu asistente para que tu dispositivo vuele 🚀</p>
+      <h2 class="splash-question">¿Quién va a usar OptiCore hoy?</h2>
+
+      <div class="splash-cards">
+        <button type="button" class="choice-card choice-colegio" id="btn-colegio">
+          <span class="choice-emoji">🏫</span>
+          <span class="choice-title">Colegio</span>
+          <span class="choice-desc">Colores divertidos y todo súper fácil de entender</span>
+          <span class="choice-tag">Ideal para adolescentes</span>
+        </button>
+
+        <button type="button" class="choice-card choice-universidad" id="btn-universidad">
+          <span class="choice-emoji">🎓</span>
+          <span class="choice-title">Universidad</span>
+          <span class="choice-desc">Diseño moderno, elegante y explicado paso a paso</span>
+          <span class="choice-tag">No necesitas saber de informática</span>
+        </button>
+      </div>
+
+      <p class="splash-hint">Puedes cambiar de modo en cualquier momento 🔄</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ PANTALLA DE CUENTA ═══════════════════ -->
+  <div id="auth-screen" class="auth-screen" hidden>
+    <div class="auth-card">
+      <button type="button" class="auth-close" id="auth-close" hidden aria-label="Cerrar y seguir como invitado" title="Cerrar y seguir como invitado">✖</button>
+      <div class="auth-logo"><span class="bolt">⚡</span> OptiCore</div>
+
+      <div class="auth-tabs" role="tablist" aria-label="Entrar o crear cuenta">
+        <button type="button" class="auth-tab active" id="auth-tab-login">🔓 Iniciar sesión</button>
+        <button type="button" class="auth-tab" id="auth-tab-register">✨ Crear cuenta</button>
+      </div>
+
+      <h2 id="auth-title">¡Hola otra vez!</h2>
+      <p class="auth-sub" id="auth-sub">Inicia sesión para recuperar tu historial y tus recomendaciones aplicadas.</p>
+
+      <form id="auth-form" autocomplete="off">
+        <label class="auth-field">
+          <span>👤 Usuario</span>
+          <input type="text" id="auth-username" maxlength="24" placeholder="p. ej. rivera" autocomplete="username" />
+        </label>
+        <label class="auth-field">
+          <span>🔑 Contraseña</span>
+          <input type="password" id="auth-password" maxlength="128" placeholder="mínimo 4 caracteres" autocomplete="current-password" />
+        </label>
+        <p id="auth-error" class="auth-error" hidden></p>
+        <button type="submit" class="btn-primary btn-block" id="auth-submit">🔓 Entrar</button>
+      </form>
+
+      <div class="auth-sep"><span>o</span></div>
+
+      <button type="button" class="btn-ghost btn-block" id="auth-guest">👤 Continuar como invitado</button>
+      <p class="auth-note">☁️ Tu cuenta, tu perfil y tu historial se guardan en <b>nuestra base de datos</b>:
+        podrás verlos desde cualquier dispositivo.<br>
+        Como invitado, el historial se guarda solo en este navegador.</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ APLICACIÓN PRINCIPAL ═══════════════════ -->
+  <div id="app" class="app" hidden>
+    <header class="app-header">
+      <div class="brand"><span class="bolt">⚡</span> OptiCore</div>
+      <div class="os-badge" id="os-badge" title="Sistema operativo detectado">
+        <span class="os-icon" id="os-icon">💻</span>
+        <span id="os-name">Detectando…</span>
+      </div>
+      <div class="header-right">
+        <button type="button" class="btn-ghost btn-icon" id="btn-scheme" title="Tema claro/oscuro (automático)">🖥️</button>
+        <span id="server-dot" class="server-dot" title=""></span>
+        <div class="user-chip" id="user-chip" hidden>
+          <span class="user-avatar" id="user-avatar">👤</span>
+          <span class="user-name" id="user-name">—</span>
+          <button type="button" class="btn-ghost btn-mini" id="btn-logout" title="Cerrar sesión">🚪 <span class="btn-label">Salir</span></button>
+          <button type="button" class="btn-ghost btn-mini" id="btn-login" title="Iniciar sesión o crear cuenta">🔑 <span class="btn-label">Entrar</span></button>
+        </div>
+        <button type="button" class="btn-ghost" id="btn-change-mode" title="Cambiar de modo (Colegio / Universidad)">🔄 <span class="btn-label">Cambiar modo</span></button>
+      </div>
+    </header>
+
+    <nav class="tabs" id="tabs" aria-label="Secciones de OptiCore">
+      <button type="button" class="tab active" data-tab="resumen"><span class="tab-icon">📊</span><span class="tab-label">Resumen</span></button>
+      <button type="button" class="tab" id="tab-procesos" data-tab="procesos"><span class="tab-icon">⚙️</span><span class="tab-label">Procesos</span></button>
+      <button type="button" class="tab" data-tab="recomendaciones"><span class="tab-icon">💡</span><span class="tab-label">Recomendaciones</span></button>
+      <button type="button" class="tab" data-tab="historial"><span class="tab-icon">🕒</span><span class="tab-label">Historial</span></button>
+    </nav>
+
+    <main class="content">
+
+      <!-- Aviso de estado de datos: agente local / modo móvil / simulación -->
+      <div id="agent-banner" class="agent-banner" hidden></div>
+
+      <!-- ── RESUMEN: CPU · RAM · SISTEMA ── -->
+      <section id="panel-resumen" class="panel active" aria-label="Resumen del sistema">
+        <div class="metrics-grid">
+
+          <article class="metric-card" id="card-cpu">
+            <header class="metric-head"><span class="metric-icon">🧠</span><h3 id="cpu-card-title">CPU</h3></header>
+            <div class="gauge">
+              <svg viewBox="0 0 140 140" aria-hidden="true">
+                <circle class="gauge-track" cx="70" cy="70" r="60"/>
+                <circle class="gauge-fill" id="gauge-cpu" cx="70" cy="70" r="60"/>
+              </svg>
+              <div class="gauge-center">
+                <span class="gauge-num" id="cpu-value">—</span><span class="gauge-unit">%</span>
+                <span class="gauge-caption">en uso</span>
+              </div>
+            </div>
+            <ul class="metric-details">
+              <li><span>Núcleos</span><b id="cpu-cores">—</b></li>
+              <li><span>Frecuencia</span><b id="cpu-freq">—</b></li>
+              <li><span>Temperatura</span><b id="cpu-temp">—</b></li>
+            </ul>
+          </article>
+
+          <article class="metric-card" id="card-ram">
+            <header class="metric-head"><span class="metric-icon">💾</span><h3>Memoria RAM</h3></header>
+            <div class="gauge">
+              <svg viewBox="0 0 140 140" aria-hidden="true">
+                <circle class="gauge-track" cx="70" cy="70" r="60"/>
+                <circle class="gauge-fill" id="gauge-ram" cx="70" cy="70" r="60"/>
+              </svg>
+              <div class="gauge-center">
+                <span class="gauge-num" id="ram-value">—</span><span class="gauge-unit">%</span>
+                <span class="gauge-caption">en uso</span>
+              </div>
+            </div>
+            <ul class="metric-details">
+              <li><span>Total</span><b id="ram-total">—</b></li>
+              <li><span>En uso</span><b id="ram-used">—</b></li>
+              <li><span>Libre</span><b id="ram-free">—</b></li>
+            </ul>
+          </article>
+
+          <article class="metric-card" id="card-os">
+            <header class="metric-head"><span class="metric-icon" id="os-card-icon">💻</span><h3>Sistema</h3></header>
+            <div class="os-hero">
+              <span class="os-hero-icon" id="os-card-icon-big">💻</span>
+              <h4 id="os-card-name">—</h4>
+              <p id="os-card-version">—</p>
+            </div>
+            <ul class="metric-details">
+              <li><span>Dispositivo</span><b id="os-card-device">—</b></li>
+              <li><span>Encendido hace</span><b id="os-card-uptime">—</b></li>
+              <li><span>Procesos activos</span><b id="os-card-procs">—</b></li>
+            </ul>
+          </article>
+        </div>
+
+        <article class="chart-card">
+          <header class="chart-head">
+            <h3>📈 Actividad en vivo</h3>
+            <div class="chart-legend">
+              <span class="legend-item"><i class="dot dot-cpu"></i><span id="legend-cpu">CPU</span></span>
+              <span class="legend-item"><i class="dot dot-ram"></i>RAM</span>
+            </div>
+          </header>
+          <canvas id="live-chart" height="180" aria-label="Gráfica de uso de CPU y RAM en tiempo real"></canvas>
+        </article>
+
+        <article class="health-card" id="health-card">
+          <div class="health-face" id="health-face">🙂</div>
+          <div class="health-info">
+            <h3>Salud de tu dispositivo: <span id="health-score">—</span>/100</h3>
+            <div class="health-bar"><div class="health-fill" id="health-fill"></div></div>
+            <p id="health-text">Analizando…</p>
+          </div>
+        </article>
+      </section>
+
+      <!-- ── PROCESOS ── -->
+      <section id="panel-procesos" class="panel" aria-label="Procesos del dispositivo">
+
+        <!-- Vista COLEGIO: simplificada y miniaturizada -->
+        <div id="process-simple">
+          <div class="psimple-head">
+            <h3>🧩 ¿Qué está funcionando ahora?</h3>
+            <p class="psimple-count">
+              Hay <b id="psimple-count">—</b> programas ayudando a tu <span id="psimple-os">dispositivo</span>.
+              ¡Estos son los más importantes!
+            </p>
+          </div>
+          <div class="psimple-grid" id="psimple-grid"></div>
+          <p class="psimple-legend">
+            🟢 Puedes cerrarlo sin miedo · 🟡 Ciérralo solo si sabes qué es · 🔴 ¡Es del sistema, no lo toques!
+          </p>
+          <p class="psimple-note">💡 Los números suben y bajan solos: ¡es normal, como los latidos de un corazón! ❤️</p>
+        </div>
+
+        <!-- Vista UNIVERSIDAD: tabla completa -->
+        <div id="process-full">
+          <div class="pfull-head">
+            <h3>⚙️ Procesos activos</h3>
+            <div class="pfull-tools">
+              <input type="search" id="process-search" placeholder="🔎 Buscar proceso…" aria-label="Buscar proceso" />
+              <select id="process-sort" aria-label="Ordenar procesos">
+                <option value="cpu">Ordenar por CPU</option>
+                <option value="mem">Ordenar por RAM</option>
+                <option value="name">Ordenar por nombre</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="proc-table" id="proc-table">
+              <thead>
+                <tr>
+                  <th data-sort="pid">PID</th>
+                  <th data-sort="name">Proceso</th>
+                  <th data-sort="category">Categoría</th>
+                  <th data-sort="cpu" class="th-num">CPU %</th>
+                  <th data-sort="mem" class="th-num">RAM</th>
+                  <th>Qué hace</th>
+                  <th class="th-close">¿Puedo cerrarlo?</th>
+                </tr>
+              </thead>
+              <tbody id="proc-table-body"></tbody>
+            </table>
+          </div>
+          <p class="pfull-note">🧠 El porcentaje de CPU indica cuánto trabajo hace el procesador para ese proceso.
+            La RAM es la memoria que usa mientras está abierto.</p>
+          <p class="pfull-legend">
+            ✅ <b>Se puede cerrar</b>: es una app tuya, ciérrala con normalidad ·
+            ⚠️ <b>Con cuidado</b>: ciérralo solo si sabes qué hace ·
+            🚫 <b>¡No lo cierres!</b>: proceso crítico del sistema. Pasa el ratón por el semáforo para ver el motivo.
+          </p>
+        </div>
+      </section>
+
+      <!-- ── RECOMENDACIONES ── -->
+      <section id="panel-recomendaciones" class="panel" aria-label="Recomendaciones de optimización">
+        <div class="rec-intro" id="rec-intro"></div>
+        <div class="rec-grid" id="rec-grid"></div>
+
+        <!-- Recomendaciones ya aplicadas por el usuario -->
+        <div id="rec-done-wrap" class="rec-done-wrap" hidden>
+          <div class="rec-done-head">
+            <h3>🏆 Recomendaciones que ya aplicaste <span class="rec-done-count" id="rec-done-count">0</span></h3>
+            <p>¡Bien hecho! Estas ya cuentan para tu puntuación de salud. Si quieres repetirlas, puedes desmarcarlas.</p>
+          </div>
+          <div class="rec-grid rec-done-grid" id="rec-done-grid"></div>
+        </div>
+      </section>
+
+      <!-- ── HISTORIAL ── -->
+      <section id="panel-historial" class="panel" aria-label="Historial del dispositivo">
+        <div class="hist-head">
+          <h3>🕒 Historial de tu dispositivo</h3>
+          <div class="hist-actions">
+            <button type="button" class="btn-primary" id="btn-snapshot">📸 Guardar ahora</button>
+            <button type="button" class="btn-ghost" id="btn-clear-history">🗑️ Borrar todo</button>
+          </div>
+        </div>
+        <p class="hist-sub">Guardamos una instantánea automática cada minuto y cada vez que quieras.
+          Así puedes ver si tu dispositivo mejora con el tiempo 📈</p>
+        <div class="hist-profile" id="hist-profile" hidden></div>
+        <p class="hist-source" id="hist-source"></p>
+        <canvas id="history-chart" height="200" aria-label="Gráfica del historial"></canvas>
+        <div class="hist-list" id="hist-list"></div>
+      </section>
+
+    </main>
+
+    <footer class="app-footer">
+      <span>⚡ OptiCore © 2026</span>
+      <span class="disclaimer">
+        Con el <b>agente local</b> activo, la CPU, la RAM y los procesos son <b>reales</b> de tu equipo;
+        sin agente (o en el móvil) se muestran datos estimados con fines educativos.
+        Las recomendaciones son orientativas: nunca cierres procesos del sistema.
+      </span>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="js/process-meta.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/recommendations.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/account.js"></script>
+  <script src="js/scheme.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

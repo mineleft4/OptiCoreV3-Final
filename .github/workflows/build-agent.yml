@@ -1,0 +1,77 @@
+# ════════════════════════════════════════════════════════════════
+# OptiCore — compila el agente local como ejecutable para cada SO
+# y lo publica en GitHub Releases.
+#
+# Cómo usarlo:
+#   1) Sube esta carpeta a un repositorio de GitHub.
+#   2) Actions → "Compilar agente" → Run workflow → escribe la URL de tu
+#      web de Netlify (p. ej. https://opticore-demo.netlify.app).
+#   3) Al terminar, los 4 archivos quedan en Releases y la web los
+#      descarga desde:
+#      https://github.com/USUARIO/REPO/releases/latest/download/<archivo>
+#
+# Solo la web que indiques podrá leer el agente (CORS con lista blanca).
+# ════════════════════════════════════════════════════════════════
+name: Compilar agente
+
+on:
+  workflow_dispatch:
+    inputs:
+      origins:
+        description: "URL(s) de tu web, separadas por comas (https://tu-sitio.netlify.app)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Validar y normalizar orígenes
+        id: origins
+        run: |
+          node -e '
+            const raw = process.argv[1].split(",").map(s => s.trim()).filter(Boolean);
+            if (!raw.length) { console.error("Indica al menos una URL"); process.exit(1); }
+            const out = raw.map(r => {
+              const u = new URL(r);
+              if (!/^https?:$/.test(u.protocol)) throw new Error("URL no válida: " + r);
+              return u.origin;
+            });
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, "list=" + out.join(",") + "\n");
+          ' "${{ inputs.origins }}"
+
+      - name: Compilar los 4 ejecutables
+        run: |
+          mkdir -p dist
+          ORIGINS="${{ steps.origins.outputs.list }}"
+          build() {
+            bun build --compile --minify \
+              --target="$1" \
+              --define "__OPTICORE_ORIGINS__=\"${ORIGINS}\"" \
+              server.js --outfile "dist/$2"
+          }
+          build bun-windows-x64 opticore-agent-windows-x64.exe
+          build bun-linux-x64   opticore-agent-linux-x64
+          build bun-darwin-arm64 opticore-agent-macos-arm64
+          build bun-darwin-x64  opticore-agent-macos-x64
+          ls -lh dist
+
+      - name: Publicar en Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: agente-${{ github.run_number }}
+          name: Agente OptiCore #${{ github.run_number }}
+          body: |
+            Agente local de OptiCore para ${{ steps.origins.outputs.list }}.
+            Descarga el archivo de tu sistema operativo y ejecútalo.
+          make_latest: true
+          files: dist/*

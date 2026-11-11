@@ -1,0 +1,16 @@
+{
+  "name": "opticore-cloud",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backend público de OptiCore: cuentas, sesiones e historial en MySQL",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "mysql2": "^3.11.0"
+  }
+}
